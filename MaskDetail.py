@@ -3,6 +3,42 @@
 
 import vapoursynth as vs
 
+def get_scale_offsets(scaled_w, scaled_h, origin_w, origin_h,
+                      offset_l, offset_t, offset_w, offset_h):
+    '''
+Inverts scaling offsets (kind of like inverting the scaling itself, really).
+
+Calculates the scale offsets necessary to scale back to its original form an
+image that was scaled to the specified dimensions using the specified offsets.
+    '''
+    # input parameters
+    scaled = [scaled_w, scaled_h]
+    origin = [origin_w, origin_h]
+    scaled_off = [offset_l, offset_t, offset_w, offset_h]
+
+    # source offsets, from lengths (w / h) to crop-style (negative values)
+    for i, (org_l, off_l) in enumerate(zip(origin, scaled_off[:2]), 2):
+        # If the input is positive, it represents a length, rather than a crop-
+        # style offset from the bottom right. Even if the output from this code
+        # is positive, however, it must always be a crop-style offset, so there
+        # won't be any special treatment required.
+        if scaled_off[i] > 0:
+            scaled_off[i] -= org_l - off_l
+
+    # the actual scaling of the offsets
+    scales = 2 * [scale / original for original, scale in zip(origin, scaled)]
+    off = [-offset * scale for offset, scale in zip(scaled_off, scales * 2)]
+
+    # target offsets, from crop-style to lengths
+    for i, (scaled_l, off_l) in enumerate(zip(scaled, off[:2]), 2):
+        # The input must be a crop-style offset from the bottom right, even if
+        # it happens to be positive. I could process only the positive values,
+        # but because I like consistency, I decided to convert all values from
+        # crop-style offsets to represent a length, regardless of whether it's
+        # really necessary.
+        off[i] += scaled_l - off_l
+
+
 def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
                gain=0.75, expandN=2, inflateN=1, blur_more=False,
                src_left=0, src_top=0, src_width=0, src_height=0,
@@ -51,6 +87,7 @@ def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
     core = vs.get_core()
 
     startclip = core.fmtc.bitdepth(clip, bits=16)
+
     original = (startclip.width, startclip.height)
     target = (final_width, final_height, src_left, src_top, src_width, src_height)
 
