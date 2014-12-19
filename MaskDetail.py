@@ -5,12 +5,12 @@ import vapoursynth as vs
 
 def get_scale_offsets(scaled_w, scaled_h, origin_w, origin_h,
                       offset_l, offset_t, offset_w, offset_h):
-    '''
+    """
 Inverts scaling offsets (kind of like inverting the scaling itself, really).
 
 Calculates the scale offsets necessary to scale back to its original form an
 image that was scaled to the specified dimensions using the specified offsets.
-    '''
+    """
     # input parameters
     scaled = [scaled_w, scaled_h]
     origin = [origin_w, origin_h]
@@ -38,6 +38,7 @@ image that was scaled to the specified dimensions using the specified offsets.
         # really necessary.
         off[i] += scaled_l - off_l
 
+    return tuple(off)
 
 def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
                gain=0.75, expandN=2, inflateN=1, blur_more=False,
