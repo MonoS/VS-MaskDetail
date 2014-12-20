@@ -60,7 +60,7 @@ def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
         lowpassthr *= scale
 
     if pclevelthr is None:
-        pclevelthr = 17990
+        pclevelthr = 59881
     else:
         pclevelthr *= scale
 
