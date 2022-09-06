@@ -45,7 +45,7 @@ def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 			   src_left=0, src_top=0, src_width=0, src_height=0,
 			   kernel='bilinear', invkstaps=4, taps=4, mode='normal',
 			   lowpasskernel='blackman', lowpassintaps=4, lowpassouttaps=3,
-			   lowpassthr=None, exportlowpass=False, pclevelthr=None):
+			   lowpassthr=None, exportlowpass=False, pclevelthr=None, b=1/3, c=1/3):
 	depth = clip.format.bits_per_sample
 	scale = (2 ** 16 - 1) / (2 ** depth - 1)
 
@@ -112,7 +112,7 @@ def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 		if   kernel == "bilinear":
 			core.descale.Debilinear(startclip, *target[:2])
 		elif kernel == "bicubic":
-			core.descale.Debicubic(startclip, *target[:2])
+			core.descale.Debicubic(startclip, *target[:2], b=b, c=c)
 		else:
 			temp = core.fmtc.resample(startclip, *target[:2], kernel=kernel, invks=True, invkstaps=invkstaps, taps=taps)
 		
