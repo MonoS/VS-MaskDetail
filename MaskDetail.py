@@ -85,7 +85,7 @@ def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
     def pclevelLut16(x):
         return x if x > pclevelthr else 0
 
-    core = vs.get_core()
+    core = vs.core
 
     startclip = core.fmtc.bitdepth(clip, bits=16)
 
