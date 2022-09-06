@@ -123,9 +123,9 @@ def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 	mask = core.std.Lut(mask, function=f16)
 
 	for i in range(expandN):
-		mask = core.generic.Maximum(mask, planes=[0])
+		mask = core.std.Maximum(mask, planes=[0])
 	for i in range(inflateN):
-		mask = core.generic.Inflate(mask, planes=[0])
+		mask = core.std.Inflate(mask, planes=[0])
 
 	mask = core.fmtc.resample(mask, *target, taps=taps)
 	if blur_more:
