@@ -40,7 +40,7 @@ image that was scaled to the specified dimensions using the specified offsets.
 
 	return tuple(off)
 
-def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
+def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 			   gain=0.75, expandN=2, inflateN=1, blur_more=False,
 			   src_left=0, src_top=0, src_width=0, src_height=0,
 			   kernel='bilinear', invkstaps=4, taps=4, mode='normal',
@@ -94,10 +94,8 @@ def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 
 	if mode.startswith('lowpass'): # lowpass and lowpasspc
 		twice = tuple(2 * o for o in original)
-		lowpass = core.fmtc.resample(startclip, *twice, kernel=lowpasskernel,
-									 taps=lowpassintaps)
-		lowpass = core.fmtc.resample(lowpass, *original, kernel=lowpasskernel,
-									 taps=lowpassouttaps)
+		lowpass = core.fmtc.resample(startclip, *twice, kernel=lowpasskernel, taps=lowpassintaps)
+		lowpass = core.fmtc.resample(lowpass, *original, kernel=lowpasskernel,taps=lowpassouttaps)
 
 		difflow = core.std.MakeDiff(startclip, lowpass, 0)
 		if exportlowpass:
@@ -111,9 +109,14 @@ def maskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 	if mode.startswith('pc') or mode.endswith('pc'): # pclevel and lowpasspc
 		diff = core.std.Lut(startclip, function=pclevelLut16)
 	else:
-		temp = core.fmtc.resample(startclip, *target[:2], kernel=kernel,
-								  invks=True, invkstaps=invkstaps, taps=taps)
-		temp = core.fmtc.resample(temp, *original, kernel=kernel, taps=taps)
+		if   kernel == "bilinear":
+			core.descale.Debilinear(startclip, *target[:2])
+		elif kernel == "bicubic":
+			core.descale.Debicubic(startclip, *target[:2])
+		else:
+			temp = core.fmtc.resample(startclip, *target[:2], kernel=kernel, invks=True, invkstaps=invkstaps, taps=taps)
+		
+		temp = core.fmtc.resample(temp, *original, kernel=kernel, taps=taps, a1=b, a2=c)
 		diff = core.std.MakeDiff(startclip, temp, 0)
 
 	mask = core.std.Lut(diff, function=luma16).rgvs.RemoveGrain(mode=[RGmode])
