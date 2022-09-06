@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import vapoursynth as vs
+import descale
 
 def get_scale_offsets(scaled_w, scaled_h, origin_w, origin_h,
 					  offset_l, offset_t, offset_w, offset_h):
@@ -109,12 +110,7 @@ def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
 	if mode.startswith('pc') or mode.endswith('pc'): # pclevel and lowpasspc
 		diff = core.std.Lut(startclip, function=pclevelLut16)
 	else:
-		if   kernel == "bilinear":
-			core.descale.Debilinear(startclip, *target[:2])
-		elif kernel == "bicubic":
-			core.descale.Debicubic(startclip, *target[:2], b=b, c=c)
-		else:
-			temp = core.fmtc.resample(startclip, *target[:2], kernel=kernel, invks=True, invkstaps=invkstaps, taps=taps)
+		temp = descale.Descale(startclip, *target[:2], kernel=kernel, taps=taps, b=b, c=c)
 		
 		temp = core.fmtc.resample(temp, *original, kernel=kernel, taps=taps, a1=b, a2=c)
 		diff = core.std.MakeDiff(startclip, temp, 0)
