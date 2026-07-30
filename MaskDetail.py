@@ -1,8 +1,12 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
 import vapoursynth as vs
-import descale
+from vapoursynth import core
+from vsrgtools import remove_grain
+from vsexprtools import norm_expr
+from vskernels import Bilinear, Blackman
+from vstools import depth, DitherType, scale_value, Range
+from enum import StrEnum
 
 def get_scale_offsets(scaled_w, scaled_h, origin_w, origin_h,
 					  offset_l, offset_t, offset_w, offset_h):
@@ -41,91 +45,74 @@ image that was scaled to the specified dimensions using the specified offsets.
 
 	return tuple(off)
 
-def MaskDetail(clip, final_width, final_height, RGmode=3, cutoff=None,
-			   gain=0.75, expandN=2, inflateN=1, blur_more=False,
-			   src_left=0, src_top=0, src_width=0, src_height=0,
-			   kernel='bilinear', invkstaps=4, taps=4, mode='normal',
-			   lowpasskernel='blackman', lowpassintaps=4, lowpassouttaps=3,
-			   lowpassthr=None, exportlowpass=False, pclevelthr=None, b=1/3, c=1/3):
-	depth = clip.format.bits_per_sample
-	scale = (2 ** 16 - 1) / (2 ** depth - 1)
+class Mode(StrEnum):
+	Normal = "normal"
+	Lowpass = "lowpass"
+	Lowpass_PCLevels = "lowpasspc"
+	PCLevels = "pclevels"
 
-	if cutoff is None:
-		cutoff = 17990
-	else:
-		cutoff *= scale
+def MaskDetail(clip: vs.VideoNode,\
+			   final_width: int, final_height: int,\
+			   RGmode: remove_grain.Mode=remove_grain.Mode.MINMAX_AROUND3,\
+			   cutoff: float | int=0.275, gain: float=0.75, expandN: int=2, inflateN: int=1, blur_more: bool=False,
+			   kernel: vskernels.Descaler=Bilinear,
+			   mode=Mode.Normal, lowpasskernel: vskernels.Kernel=Blackman, lowpassthr: int | None=None, exportlowpass: bool=False, pclevelthr: int | None=None)\
+			   -> vs.VideoNode:
+	if   type(cutoff) == int:
+		intCutoff = int(scale_value(cutoff, clip.format, vs.GRAY16, Range.FULL, Range.FULL))
+	elif type(cutoff) == float:
+		intCutoff = int(scale_value(cutoff, vs.GRAYS, vs.GRAY16, Range.FULL, Range.FULL))
 
 	if lowpassthr is None:
 		lowpassthr = 1542
 	else:
-		lowpassthr *= scale
+		lowpassthr = int(scale_value(lowpassthr, clip.format, vs.GRAY16, Range.FULL, Range.FULL))
 
 	if pclevelthr is None:
 		pclevelthr = 59881
 	else:
-		pclevelthr *= scale
+		pclevelthr = int(scale_value(pclevelthr, clip.format, vs.GRAY16, Range.FULL, Range.FULL))
 
-	def lowpassLut16(x):
-		p = x - 0x8000
-		if p > 0 and p - lowpassthr > 0:
-			return x - lowpassthr
-		elif p <= 0 and p + lowpassthr < 0:
-			return x + lowpassthr
-		else:
-			return 0x8000
-	def luma16(x):
-		x <<= 4
-		value = x & 0xFFFF
-		return 0xFFFF - value if x & 0x10000 else value
-	def f16(x):
-		if x < cutoff:
-			return 0
+	histluma16 = f"range_max 1 + 16 / 1 - rpa! range_min 16 rpa@ x range_min - rpa@ 2 * % rpa@ - abs - * +"
 
-		result = x * gain * (0x10000 + x) / 0x10000
-		return min(0xFFFF, int(result))
-	def pclevelLut16(x):
-		return x if x > pclevelthr else 0
+	startclip = depth(clip, 16, dither_type=DitherType.ROUND)
 
-	core = vs.core
-
-	startclip = core.fmtc.bitdepth(clip, bits=16)
-
-	original = (startclip.width, startclip.height)
-	target = (final_width, final_height, src_left, src_top, src_width, src_height)
-
-	if mode.startswith('lowpass'): # lowpass and lowpasspc
-		twice = tuple(2 * o for o in original)
-		lowpass = core.fmtc.resample(startclip, *twice, kernel=lowpasskernel, taps=lowpassintaps)
-		lowpass = core.fmtc.resample(lowpass, *original, kernel=lowpasskernel,taps=lowpassouttaps)
+	if mode in [Mode.Lowpass, Mode.Lowpass_PCLevels]:
+		lowpass = lowpasskernel().scale(startclip, startclip.width*2, startclip.height*2)
+		lowpass = lowpasskernel().scale(lowpass, startclip.width, startclip.height)
 
 		difflow = core.std.MakeDiff(startclip, lowpass, 0)
 		if exportlowpass:
-			return core.std.Lut(difflow, function=luma16)
+			return norm_expr(difflow, histluma16)
 
-		difflow = core.rgvs.RemoveGrain(difflow, mode=[1])
-		difflow = core.std.Lut(difflow, function=lowpassLut16)
+		difflow = remove_grain(difflow, mode=[remove_grain.Mode.MINMAX_AROUND1])
+		difflow = norm_expr(difflow, " ".join([f"x neutral - p!", 
+                                               f"p@ 0  > p@ {lowpassthr} - 0 > and x {lowpassthr} -",
+                                               f"p@ 0 <= p@ {lowpassthr} + 0 < and x {lowpassthr} +",
+                                               f"neutral",
+                                               f"? ?"]))
 
 		startclip = core.std.MergeDiff(startclip, difflow, 0)
 
-	if mode.startswith('pc') or mode.endswith('pc'): # pclevel and lowpasspc
-		diff = core.std.Lut(startclip, function=pclevelLut16)
+	if mode in [Mode.PCLevels, Mode.Lowpass_PCLevels]:
+		diff = norm_expr(clip, f"x {pclevelthr} > x range_min ?")
 	else:
-		temp = descale.Descale(startclip, *target[:2], kernel=kernel, taps=taps, b=b, c=c)
-		
-		temp = core.fmtc.resample(temp, *original, kernel=kernel, taps=taps, a1=b, a2=c)
-		diff = core.std.MakeDiff(startclip, temp, 0)
+		temp = depth(startclip, 32)
+		temp = kernel().descale(temp, final_width, final_height)
+		temp = kernel().scale(temp, startclip.width, startclip.height)
+		diff = core.std.MakeDiff(startclip, depth(temp, 16, dither_type=DitherType.ROUND), 0)
 
-	mask = core.std.Lut(diff, function=luma16).rgvs.RemoveGrain(mode=[RGmode])
-	mask = core.std.Lut(mask, function=f16)
+	mask = remove_grain(norm_expr(diff, histluma16), RGmode)
+	mask = norm_expr(mask, f"x {intCutoff} < 0 x {gain} range_max x + range_max / * * ?")
 
 	for i in range(expandN):
 		mask = core.std.Maximum(mask, planes=[0])
 	for i in range(inflateN):
 		mask = core.std.Inflate(mask, planes=[0])
 
-	mask = core.fmtc.resample(mask, *target, taps=taps)
+	mask = Bilinear().scale(mask, final_width, final_height)
 	if blur_more:
-		mask = core.rgvs.RemoveGrain(mask, mode=[12,0,0])
+		mask = remove_grain(mask, mode=[remove_grain.Mode.BINOMIAL_BLUR, remove_grain.Mode.NONE, remove_grain.Mode.NONE])
 
 	mask = core.std.ShufflePlanes(mask, planes=0, colorfamily=vs.GRAY)
-	return core.fmtc.bitdepth(mask, bits=depth, dmode=1)
+	return depth(mask, clip.format.bits_per_sample, dither_type=DitherType.ROUND)
