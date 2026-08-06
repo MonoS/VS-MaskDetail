@@ -1,6 +1,6 @@
 # VS-MaskDetail
 
-Creates a higher resolution mask of the details during a descale
+Vapoursynth script to generate a mask of high frequency detail using in a clip using kernel inversion and reupscale
 
 ## Installation
 

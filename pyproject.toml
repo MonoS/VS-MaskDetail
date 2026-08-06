@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vs-maskdetail"
-description = "Creates a higher resolution mask of the details during a descale"
+description = "Vapoursynth script to generate a mask of high frequency detail using in a clip using kernel inversion and reupscale"
 version = "4.0.0"
 license = {text = "GPL-3.0"}
 authors = [
