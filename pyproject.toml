@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vs-maskdetail"
+description = "Creates a higher resolution mask of the details during a descale"
+version = "4.0.0"
+license = {text = "GPL-3.0"}
+authors = [
+  { name = "monos" },
+]
+readme = "README.md"
+
+requires-python = ">=3.13"
+
+dependencies = [
+  "VapourSynth >= 78",
+  "vsjetpack[full,nvidia] >= 2.2.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/MonoS/VS-MaskDetail"
+
+[tool.setuptools.package-data]
+xclean = ["py.typed"]
+
+[project.optional-dependencies]
+dev = ["toml"]
