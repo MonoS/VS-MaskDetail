@@ -4,7 +4,7 @@ import vapoursynth as vs
 from vapoursynth import core
 from vsrgtools import remove_grain
 from vsexprtools import norm_expr
-from vskernels import Bilinear, Blackman
+from vskernels import Bilinear, Blackman, Descaler, Kernel
 from vstools import depth, DitherType, scale_value, Range
 from enum import StrEnum
 
@@ -55,8 +55,8 @@ def MaskDetail(clip: vs.VideoNode,\
 			   final_width: int, final_height: int,\
 			   RGmode: remove_grain.Mode=remove_grain.Mode.MINMAX_AROUND3,\
 			   cutoff: float | int=0.275, gain: float=0.75, expandN: int=2, inflateN: int=1, blur_more: bool=False,
-			   kernel: vskernels.Descaler=Bilinear,
-			   mode=Mode.Normal, lowpasskernel: vskernels.Kernel=Blackman, lowpassthr: int | None=None, exportlowpass: bool=False, pclevelthr: int | None=None)\
+			   kernel: Descaler=Bilinear,
+			   mode=Mode.Normal, lowpasskernel: Kernel=Blackman, lowpassthr: int | None=None, exportlowpass: bool=False, pclevelthr: int | None=None)\
 			   -> vs.VideoNode:
 	if   type(cutoff) == int:
 		intCutoff = int(scale_value(cutoff, clip.format, vs.GRAY16, Range.FULL, Range.FULL))
