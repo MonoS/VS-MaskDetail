@@ -115,4 +115,4 @@ def MaskDetail(clip: vs.VideoNode,\
 		mask = remove_grain(mask, mode=[remove_grain.Mode.BINOMIAL_BLUR, remove_grain.Mode.NONE, remove_grain.Mode.NONE])
 
 	mask = core.std.ShufflePlanes(mask, planes=0, colorfamily=vs.GRAY)
-	return depth(mask, clip.format.bits_per_sample, dither_type=DitherType.ROUND)
+	return depth(mask, clip.format.bits_per_sample, dither_type=DitherType.ROUND, range_in=vs.RANGE_FULL, range_out=vs.RANGE_FULL)
