@@ -8,22 +8,23 @@ description = "Vapoursynth script to generate a mask of high frequency detail us
 version = "4.0.0"
 license = {text = "GPL-3.0"}
 authors = [
-  { name = "monos" },
+  { name = "MonoS" },
+  { name = "Chibi_Goku" }
 ]
 readme = "README.md"
 
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 
 dependencies = [
   "VapourSynth >= 78",
-  "vsjetpack[full,nvidia] >= 2.2.0"
+  "vsjetpack[basic,rg,expr,kernels] >= 2.2.0"
 ]
 
 [project.urls]
 Homepage = "https://github.com/MonoS/VS-MaskDetail"
 
 [tool.setuptools.package-data]
-xclean = ["py.typed"]
+vs-maskdetail = ["py.typed"]
 
 [project.optional-dependencies]
 dev = ["toml"]
